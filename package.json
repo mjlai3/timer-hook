@@ -1,13 +1,14 @@
 {
   "name": "timer-hook",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "An easy to use timer hook for React",
   "main": "./lib/index.js",
   "repository": "git@github.com:mjlai3/timer-hook.git",
   "author": "Michael Lai",
   "license": "MIT",
   "scripts": {
-    "build": "./node_modules/.bin/babel src --out-dir lib"
+    "build": "./node_modules/.bin/babel src --out-dir lib",
+    "prepublishOnly": "rm -rf lib && yarn build"
   },
   "devDependencies": {
     "@babel/cli": "^7.8.4",
