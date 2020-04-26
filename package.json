@@ -1,6 +1,6 @@
 {
   "name": "timer-hook",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "An easy to use timer hook for React",
   "main": "./lib/index.js",
   "repository": "git@github.com:mjlai3/timer-hook.git",
@@ -10,6 +10,15 @@
     "build": "./node_modules/.bin/babel src --out-dir lib",
     "prepublishOnly": "rm -rf lib && yarn build"
   },
+  "keywords": [
+    "react",
+    "hook",
+    "timer"
+  ],
+  "bugs": {
+    "url": "https://github.com/mjlai3/timer-hook/issues"
+  },
+  "homepage": "https://github.com/mjlai3/timer-hook#readme",
   "devDependencies": {
     "@babel/cli": "^7.8.4",
     "@babel/core": "^7.9.0",
