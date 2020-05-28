@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useEffect, useReducer } from 'react';
 import { useInterval } from './useInterval';
 
 const TIMER_TYPE = {
@@ -6,89 +6,87 @@ const TIMER_TYPE = {
   DECREMENT: 'DECREMENT'
 };
 
-const defaultConfigs = {
+const defaultConfig = {
   interval: 1000,
   initialTime: 0,
   step: 1,
   endTime: null,
   type: TIMER_TYPE.INCREMENT,
-  onEnd: () => { }
-}
+  isPaused: true
+};
 
-export const useTimer = (config) => {
-  const { interval, initialTime, step, endTime, type, onEnd } = {
-    ...defaultConfigs,
-    ...config
+const reducer = (state, action) => {
+  switch (action.type) {
+    case 'TICK':
+      if (action.payload.type === TIMER_TYPE.INCREMENT) {
+        return { ...state, time: state.time + Math.abs(action.payload.step) };
+      }
+      if (action.payload.type === TIMER_TYPE.DECREMENT) {
+        return { ...state, time: state.time + -Math.abs(action.payload.step) };
+      }
+      return state;
+    case 'SET_TIME':
+      return { ...state, time: action.payload };
+    case 'START':
+      return { ...state, isPaused: false };
+    case 'PAUSE':
+      return { ...state, isPaused: true };
+    case 'RESET':
+      return { ...state, isPaused: true, time: state.initialTime };
+    default:
+      return state;
   }
-  const isInitialLoad = useRef(true);
-  const [time, setTime] = useState(initialTime);
-  const [delay, setDelay] = useState(null);
-  const [shouldReset, setShouldReset] = useState(false);
+};
 
-  const isFinished = useCallback(() => {
-    if (type === TIMER_TYPE.INCREMENT && endTime && time >= endTime) {
-      return true;
-    }
-    if (type === TIMER_TYPE.DECREMENT && time <= (endTime || 0)) {
-      return true;
-    }
-    return false;
-  }, [type, endTime, time]);
-
-  const isRunning = useCallback(() => delay !== null, [delay]);
-
-  useEffect(() => {
-    if (!isInitialLoad.current && isRunning() && !shouldReset && isFinished()) {
-      onEnd();
-    }
-    if (isInitialLoad.current) {
-      isInitialLoad.current = false;
-    }
-  }, [isRunning, onEnd, shouldReset, isFinished]);
-
-  useEffect(() => {
-    isFinished() && pause();
-  }, [isFinished]);
-
-  useEffect(() => {
-    if (shouldReset) {
-      setTime(initialTime);
-      setShouldReset(false);
-    }
-  }, [initialTime, shouldReset]);
+export const useTimer = config => {
+  const initialState = {
+    ...defaultConfig,
+    ...config,
+    time: config.initialTime || defaultConfig.initialTime
+  };
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const currentConfig = {
+    ...state,
+    ...config
+  };
+  const { onEnd } = currentConfig;
 
   useInterval(
     () => {
-      if (type === TIMER_TYPE.INCREMENT) {
-        endTime
-          ? setTime(Math.min(time + step, endTime))
-          : setTime(time + step);
-      }
-      if (type === TIMER_TYPE.DECREMENT) {
-        setTime(Math.max(time - step, endTime || 0));
+      if (!state.isPaused) {
+        dispatch({
+          type: 'TICK',
+          payload: {
+            type: currentConfig.type,
+            step: currentConfig.step
+          }
+        });
       }
     },
-    isRunning() ? interval : null
+    state.isPaused ? null : currentConfig.interval
   );
 
-  const start = () => {
-    !isFinished() && setDelay(1000);
-  };
+  useEffect(() => {
+    const endTime = parseInt(config.endTime, 10);
+    const hasFinished = () =>
+      (currentConfig.type === TIMER_TYPE.INCREMENT && state.time >= endTime) ||
+      (currentConfig.type === TIMER_TYPE.DECREMENT && state.time <= endTime);
+    if (!state.isPaused && hasFinished()) {
+      dispatch({ type: 'PAUSE' });
+      dispatch({ type: 'SET_TIME', payload: endTime });
+      typeof onEnd === 'function' && onEnd();
+    }
+  }, [state.time, state.isPaused, config.endTime, currentConfig.type, onEnd]);
 
-  const pause = () => {
-    setDelay(null);
-  };
-
-  const reset = () => {
-    pause();
-    setShouldReset(true);
-  };
+  const start = () => dispatch({ type: 'START' });
+  const pause = () => dispatch({ type: 'PAUSE' });
+  const reset = () => dispatch({ type: 'RESET' });
 
   return {
-    time,
+    time: state.time,
     start,
     pause,
     reset,
-    isRunning: isRunning()
+    isRunning: !state.isPaused
   };
 };
